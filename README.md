@@ -1,4 +1,4 @@
-# Music Besties Skeleton App
+# Music Besties App
 
 A web application for ranking and reviewing music eras and songs. This app allows users to:
 
@@ -15,20 +15,42 @@ A web application for ranking and reviewing music eras and songs. This app allow
 - Responsive design for various screen sizes
 - Local storage for saving user preferences
 
-## Usage
+## Technology Stack
 
-1. Open `index.html` in a web browser
-2. View the dashboard of music eras
-3. Click "Edit" to modify rankings
-4. Select items to rank them
-5. Add reviews and ratings in the sidebar
-6. Save your changes
+- Vue 3 (Composition API)
+- Tailwind CSS for styling
+- Parcel for bundling and building
+- Local storage for data persistence
 
-## Technical Details
+## Development
 
-- Built with vanilla HTML, CSS, and JavaScript
-- Uses local storage for data persistence
-- No external dependencies or build steps required
+### Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+
+### Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Start the development server:
+   ```
+   npm run dev
+   ```
+4. Open your browser to the URL shown in the terminal (usually http://localhost:1234)
+
+### Building for Production
+
+To create a production build:
+
+```
+npm run build
+```
+
+The built files will be in the `dist` directory, ready for deployment.
 
 ## Note
 

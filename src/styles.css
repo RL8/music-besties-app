@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles from our original CSS */
+/* Base Styles */
+body { 
+    font-family: 'Inter', sans-serif; 
+    -webkit-font-smoothing: antialiased; 
+    -moz-osx-font-smoothing: grayscale; 
+}
+
+.no-hover-highlight { 
+    -webkit-tap-highlight-color: transparent; 
+}
+
+/* Add all the custom styles from our original CSS file */
+/* Chip Styles */
+@layer components {
+    .chip { 
+        @apply inline-flex items-center py-1 px-3;
+    }
+    
+    .chip-rank-indicator { 
+        @apply inline-flex items-center justify-center min-w-[1.75rem] h-5 rounded-full py-0 px-1.5 bg-blue-900 text-white text-xs font-semibold leading-none flex-shrink-0;
+    }
+    
+    .chip .chip-rank-indicator { 
+        @apply mr-2;
+    }
+    
+    .chip-rank-indicator .emoji { 
+        @apply mr-0.5 text-[0.65rem] leading-none;
+    }
+    
+    .chip.disabled { 
+        @apply opacity-50 cursor-not-allowed pointer-events-none bg-gray-100 border-gray-300 text-gray-500;
+    }
+
+    /* Dashboard Grid Card Styles */
+    .dashboard-grid-card { 
+        @apply bg-white rounded-lg p-3 shadow-sm border border-gray-200 text-center flex flex-col justify-center min-h-[6rem] cursor-pointer relative;
+    }
+    
+    .dashboard-stars { 
+        @apply text-sm text-amber-400 tracking-wider pointer-events-none h-5 leading-none;
+    }
+
+    /* Sidebar Styles */
+    .sidebar-chip { 
+        @apply flex items-center py-2 px-3 border border-gray-200 rounded-full mb-2 text-sm bg-white text-gray-700;
+    }
+    
+    .sidebar-chip.selected { 
+        @apply border-blue-300 bg-blue-50 text-blue-900 font-medium;
+    }
+    
+    /* Review Section Styles */
+    .review-display-area .stars { 
+        @apply text-lg text-amber-400 tracking-wider mb-1;
+    }
+    
+    .review-display-area .stars.unrated { 
+        @apply text-gray-300;
+    }
+    
+    .review-display-area .comment { 
+        @apply text-sm text-gray-600 italic whitespace-pre-wrap break-words;
+    }
+    
+    .review-display-area .no-review { 
+        @apply text-sm text-gray-400 italic;
+    }
+}
+
+/* Add any other custom styles that can't be easily converted to Tailwind classes */

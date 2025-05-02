@@ -1,0 +1,23 @@
+{
+  "name": "music-besties-skeleton",
+  "version": "1.0.0",
+  "description": "A web application for ranking and reviewing music eras and songs. This app allows users to:",
+  "scripts": {
+    "dev": "parcel src/index.html",
+    "build": "parcel build src/index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@parcel/transformer-vue": "^2.14.4",
+    "autoprefixer": "^10.4.21",
+    "parcel": "^2.14.4",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.3.0"
+  }
+}
