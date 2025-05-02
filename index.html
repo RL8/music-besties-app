@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chip Selection Prototype (Sidebar Tabs)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base Styles */
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; background-color: #f3f4f6; }
+        .hidden { display: none; }
+        .no-hover-highlight { -webkit-tap-highlight-color: transparent; }
+
+        /* Focus Styles */
+        .chip:focus-visible, .tab-button:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible, .dashboard-grid-card:focus-visible, .star-rating input:focus-visible + label, .sidebar-tab-button:focus-visible {
+             outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 4px;
+        }
+        /* Transitions */
+        .chip, .tab-button, .modal, #view-sidebar, .star-rating label, .sidebar-tab-button, button {
+            transition: all 0.15s ease-in-out;
+        }
+        /* Chip Styles */
+        .chip { display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; }
+        .chip-rank-indicator { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; height: 1.25rem; border-radius: 9999px; padding: 0 0.4rem; background-color: #1e3a8a; color: white; font-size: 0.75rem; font-weight: 600; line-height: 1; flex-shrink: 0; }
+        .chip .chip-rank-indicator { margin-right: 0.5rem; }
+        .chip-rank-indicator .emoji { margin-right: 0.15rem; font-size: 0.65rem; line-height: 1; }
+        .chip.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; background-color: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
+
+        /* Main Tab Button Styles */
+        .tab-button.active { border-color: #3b82f6; background-color: #eff6ff; color: #2563eb; font-weight: 600; }
+        .tab-button.active .tab-count { color: #3b82f6; }
+
+        /* Modal Styles (Save Confirmation) */
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; visibility: hidden; backdrop-filter: blur(2px); }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal { background-color: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); width: 90%; max-width: 400px; transform: scale(0.95); }
+        .modal-overlay.visible .modal { transform: scale(1); }
+
+        /* Dashboard Grid Card Styles */
+        .dashboard-grid-card { background-color: white; border-radius: 0.5rem; padding: 0.75rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 95px; cursor: pointer; position: relative; }
+        .dashboard-grid-card .card-title { font-weight: 600; color: #1f2937; display: block; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.875rem; pointer-events: none; }
+        .dashboard-grid-card .card-title .emoji { margin-right: 0.25rem; font-size: 0.75rem; }
+        .dashboard-grid-card .card-count { font-size: 0.75rem; color: #6b7280; display: block; pointer-events: none; margin-bottom: 0.25rem; }
+        .dashboard-grid-card.selected .card-count { color: #1d4ed8; font-weight: 500; }
+        .dashboard-grid-card.all-selected .card-count { color: #15803d; font-weight: 600; }
+        .dashboard-rank-indicator-wrapper { position: absolute; top: 0.3rem; right: 0.3rem; pointer-events: none; }
+        .dashboard-rank-indicator-wrapper .chip-rank-indicator { box-shadow: 0 1px 2px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.5); margin-right: 0; }
+        .dashboard-stars { font-size: 0.8rem; color: #fbbf24; letter-spacing: 1px; pointer-events: none; height: 1.2em; line-height: 1; }
+
+        /* Sidebar Styles */
+        #view-sidebar { position: fixed; top: 0; bottom: 0; right: 0; width: 85%; max-width: 350px; background-color: #f9fafb; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 60; transform: translateX(100%); visibility: hidden; display: flex; flex-direction: column; }
+        #view-sidebar.visible { transform: translateX(0); visibility: visible; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background-color: white; gap: 0.5rem; }
+        .sidebar-title-container { display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; min-width: 0; }
+        .sidebar-title { font-size: 1.125rem; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
+        .sidebar-title .emoji { font-size: 1rem; flex-shrink: 0; }
+        .sidebar-title .chip-rank-indicator { margin-left: 0.5rem; flex-shrink: 0; }
+        .sidebar-close-btn { background: none; border: none; font-size: 1.5rem; font-weight: 600; color: #6b7280; cursor: pointer; padding: 0.5rem; line-height: 1; flex-shrink: 0; border-radius: 9999px; }
+        .sidebar-content { flex-grow: 1; overflow-y: auto; padding: 0; display: flex; flex-direction: column; } /* Make content flex column */
+        .sidebar-chip { display: flex; align-items: center; padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; border-radius: 9999px; margin-bottom: 0.5rem; font-size: 0.875rem; background-color: white; color: #374151; }
+        .sidebar-chip.selected { border-color: #93c5fd; background-color: #eff6ff; color: #1e40af; font-weight: 500; }
+        .sidebar-chip .chip-rank-indicator { margin-right: 0.75rem; }
+
+        /* Sidebar Tab Styles */
+        .sidebar-tab-nav { display: flex; border-bottom: 1px solid #e5e7eb; background-color: white; padding: 0 1.5rem; }
+        .sidebar-tab-button { flex-grow: 1; text-align: center; padding: 0.75rem 0.5rem; font-size: 0.875rem; font-weight: 500; color: #6b7280; border-bottom: 2px solid transparent; cursor: pointer; }
+        .sidebar-tab-button.active { color: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+        .sidebar-tab-panel { padding: 1.5rem; flex-grow: 1; overflow-y: auto; /* Allow panel content to scroll if needed */ }
+
+        /* Review Section Styles (within tab panel) */
+        .review-display-area { margin-bottom: 1rem; }
+        .review-display-area .stars { font-size: 1.1rem; color: #fbbf24; letter-spacing: 1px; margin-bottom: 0.25rem; }
+        .review-display-area .stars.unrated { color: #d1d5db; }
+        .review-display-area .comment { font-size: 0.875rem; color: #4b5563; font-style: italic; white-space: pre-wrap; word-wrap: break-word; }
+        .review-display-area .no-review { font-size: 0.875rem; color: #9ca3af; font-style: italic; }
+
+        #review-editor-form h4 { font-weight: 600; color: #374151; margin-bottom: 0.75rem; }
+        .star-rating { display: flex; flex-direction: row-reverse; justify-content: center; margin-bottom: 0.5rem; }
+        .star-rating input[type="radio"] { display: none; }
+        .star-rating label { font-size: 2.5rem; color: #d1d5db; cursor: pointer; padding: 0 0.1em; }
+        .star-rating input[type="radio"]:checked ~ label,
+        .star-rating:not(:checked) > label:hover,
+        .star-rating:not(:checked) > label:hover ~ label { color: #fbbf24; }
+        .rating-description { text-align: center; font-size: 0.875rem; color: #4b5563; min-height: 1.25em; margin-bottom: 1rem; font-style: italic; }
+        .review-comment textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; min-height: 60px; resize: vertical; }
+        .comment-char-count { font-size: 0.75rem; text-align: right; color: #9ca3af; margin-top: 0.25rem; }
+
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="max-w-xl mx-auto bg-white min-h-screen shadow-lg relative overflow-hidden">
+
+        <div id="screen-dashboard" class="p-4 sm:p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">My Rankings</h1>
+                <button id="edit-rankings-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg shadow active:bg-blue-700 transition-colors text-sm no-hover-highlight">
+                    Edit
+                </button>
+            </div>
+            <div id="dashboard-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6"></div>
+             <p class="text-xs text-gray-400 mt-8 text-center px-4 pb-4">
+                 This app is unofficial and not affiliated with Taylor Swift or TAS Rights Management, LLC.
+             </p>
+        </div>
+
+        <div id="screen-edit" class="hidden flex flex-col min-h-screen">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+                 <button id="cancel-edit-btn" class="text-red-600 font-medium px-3 py-1 rounded active:bg-red-100 transition-colors no-hover-highlight">Cancel</button>
+                 <h2 class="text-lg font-semibold text-gray-700">Edit Rankings</h2>
+                 <button id="save-edit-btn" class="bg-green-500 text-white font-semibold px-4 py-1 rounded-md shadow active:bg-green-700 transition-colors no-hover-highlight">Save</button>
+            </div>
+            <div class="border-b border-gray-200 bg-white overflow-x-auto sticky top-[61px] z-10">
+                <nav id="tab-buttons" class="-mb-px flex space-x-1 sm:space-x-2 px-4" aria-label="Tabs"></nav>
+            </div>
+            <div id="tab-panels" class="flex-grow overflow-y-auto p-4 sm:p-6"></div>
+        </div>
+
+        <div id="save-confirm-modal" class="modal-overlay">
+            <div class="modal">
+                <h3 class="text-lg font-semibold mb-4 text-gray-800">Confirm Save</h3>
+                <p class="text-gray-600 mb-6">Are you sure you want to save these rankings?</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancel-save-modal-btn" class="px-4 py-2 rounded-md text-gray-700 bg-gray-100 active:bg-gray-300 transition-colors no-hover-highlight">Cancel</button>
+                    <button id="confirm-save-modal-btn" class="px-4 py-2 rounded-md bg-green-500 text-white active:bg-green-700 transition-colors shadow no-hover-highlight">Confirm Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-header-top-row">
+                    <div id="sidebar-title-container" class="sidebar-title-container"></div>
+                    <button id="sidebar-close-btn" class="sidebar-close-btn no-hover-highlight active:bg-gray-200" aria-label="Close sidebar">&times;</button>
+                </div>
+            </div>
+            <div id="sidebar-content" class="sidebar-content">
+                 <div id="sidebar-tab-nav" class="sidebar-tab-nav">
+                     <button class="sidebar-tab-button active" data-target="#sidebar-panel-rankings">Rankings</button>
+                     <button id="sidebar-tab-button-review" class="sidebar-tab-button" data-target="#sidebar-panel-review">Review & Notes</button>
+                 </div>
+                 <div id="sidebar-tab-panels" class="flex-grow relative"> {/* Use relative for potential absolute positioning inside */}
+                     <div id="sidebar-panel-rankings" class="sidebar-tab-panel">
+                         <div id="sidebar-chip-container" class="flex flex-col gap-3"></div>
+                     </div>
+                     <div id="sidebar-panel-review" class="sidebar-tab-panel hidden">
+                         <div id="review-display-area" class="review-display-area">
+                             <div id="review-display-stars" class="stars text-xl"></div> {/* Larger stars */}
+                             <p id="review-display-comment" class="comment"></p>
+                         </div>
+                         <button id="edit-review-btn" class="text-sm text-blue-600 mb-4 active:text-blue-800">Edit Review</button>
+
+                         <div id="review-editor-form" class="hidden">
+                             <h4>Your Rating for <span id="review-editor-era-name" class="font-semibold">Era</span></h4>
+                             <div class="star-rating">
+                                 <input type="radio" id="review-editor-star5" name="review-editor-rating" value="5" /><label for="review-editor-star5" title="All time fave">★</label>
+                                 <input type="radio" id="review-editor-star4" name="review-editor-rating" value="4" /><label for="review-editor-star4" title="Love it">★</label>
+                                 <input type="radio" id="review-editor-star3" name="review-editor-rating" value="3" /><label for="review-editor-star3" title="Tolerate it">★</label>
+                                 <input type="radio" id="review-editor-star2" name="review-editor-rating" value="2" /><label for="review-editor-star2" title="Skip">★</label>
+                                 <input type="radio" id="review-editor-star1" name="review-editor-rating" value="1" /><label for="review-editor-star1" title="Still deciding">★</label>
+                             </div>
+                             <div id="review-editor-rating-description" class="rating-description">&nbsp;</div>
+                             <div class="review-comment mb-4">
+                                 <textarea id="review-editor-comment-input" maxlength="140" placeholder="Add a comment (optional, max 140 chars)..."></textarea>
+                                 <div id="review-editor-comment-char-count" class="comment-char-count">0 / 140</div>
+                             </div>
+                             <div class="flex justify-end space-x-2">
+                                 <button id="cancel-edit-review-btn" class="text-sm text-gray-600 px-3 py-1 active:bg-gray-200">Cancel</button>
+                                 <button id="save-review-btn" class="text-sm bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md shadow active:bg-indigo-800 transition-colors no-hover-highlight">
+                                     Save Review
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        </div> <script>
+        // --- Configuration ---
+        const MAX_SELECTION = 3;
+        const LOCAL_STORAGE_KEY = 'musicBestiesRankingsV3';
+        const COMMENT_MAX_LENGTH = 140;
+        const RATING_DESCRIPTIONS = { 0: '', 1: 'Still deciding', 2: 'Skip', 3: 'Tolerate it', 4: 'Love it', 5: 'All time fave' };
+        const erasWithSongs = [
+            { id: 'debut', name: 'Debut', emoji: '💚', songs: ['Tim McGraw', 'Teardrops On My Guitar', 'Our Song', 'Picture to Burn', 'Should\'ve Said No'] },
+            { id: 'fearless', name: 'Fearless', emoji: '💛', songs: ['Fearless', 'Fifteen', 'Love Story', 'You Belong With Me', 'White Horse'] },
+            { id: 'speaknow', name: 'Speak Now', emoji: '💜', songs: ['Mine', 'Sparks Fly', 'Back To December', 'Mean', 'The Story of Us', 'Enchanted', 'Long Live'] },
+            { id: 'red', name: 'Red', emoji: '❤️', songs: ['State of Grace', 'Red', 'I Knew You Were Trouble', 'All Too Well', '22', 'We Are Never Ever Getting Back Together', 'All Too Well (10 Min)'] },
+            { id: '1989', name: '1989', emoji: '🩵', songs: ['Welcome to New York', 'Blank Space', 'Style', 'Out Of The Woods', 'Shake It Off', 'Bad Blood', 'Wildest Dreams', 'New Romantics'] },
+            { id: 'reputation', name: 'Reputation', emoji: '🖤', songs: ['...Ready for It?', 'End Game', 'Delicate', 'Look What You Made Me Do', 'Getaway Car', 'Call It What You Want'] },
+            { id: 'lover', name: 'Lover', emoji: '🩷', songs: ['Cruel Summer', 'Lover', 'The Man', 'You Need To Calm Down', 'ME!', 'Paper Rings', 'Cornelia Street'] },
+            { id: 'folklore', name: 'folklore', emoji: '🩶', songs: ['the 1', 'cardigan', 'the last great american dynasty', 'exile', 'my tears ricochet', 'mirrorball', 'seven', 'august', 'this is me trying', 'illicit affairs', 'invisible string', 'mad woman', 'epiphany', 'betty', 'peace', 'hoax', 'the lakes'] },
+            { id: 'evermore', name: 'evermore', emoji: '🧡', songs: ['willow', 'champagne problems', 'gold rush', '\'tis the damn season', 'tolerate it', 'no body, no crime', 'happiness', 'dorothea', 'coney island', 'ivy', 'cowboy like me', 'long story short', 'marjorie', 'closure', 'evermore', 'right where you left me', 'it\'s time to go'] },
+            { id: 'midnights', name: 'Midnights', emoji: '💙', songs: ['Lavender Haze', 'Maroon', 'Anti-Hero', 'Snow On The Beach', 'You\'re On Your Own, Kid', 'Midnight Rain', 'Question...?', 'Vigilante Shit', 'Bejeweled', 'Labyrinth', 'Karma', 'Sweet Nothing', 'Mastermind', 'The Great War', 'Bigger Than The Whole Sky', 'Paris', 'High Infidelity', 'Glitch', 'Would\'ve, Could\'ve, Should\'ve', 'Dear Reader', 'Hits Different', 'You\'re Losing Me'] },
+            { id: 'ttpd', name: 'TTPD', emoji: '🤍', songs: ['Fortnight', 'The Tortured Poets Department', 'My Boy Only Breaks His Favorite Toys', 'Down Bad', 'So Long, London', 'But Daddy I Love Him', 'Fresh Out The Slammer', 'Florida!!!', 'Guilty as Sin?', 'Who\'s Afraid of Little Old Me?', 'I Can Fix Him (No Really I Can)', 'loml', 'I Can Do It With a Broken Heart', 'The Smallest Man Who Ever Lived', 'The Alchemy', 'Clara Bow', /* Anthology */ 'The Black Dog', 'imgonnagetyouback', 'The Albatross', 'Chloe or Sam or Sophia or Marcus', 'How Did It End?', 'So High School', 'I Hate It Here', 'thanK you aIMee', 'I Look in People\'s Windows', 'The Prophecy', 'Cassandra', 'Peter', 'The Bolter', 'Robin', 'The Manuscript'] }
+        ];
+        const eraNamesInOrder = erasWithSongs.map(era => era.name);
+        const originalSongLists = erasWithSongs.reduce((acc, era) => {
+            acc[era.id] = era.songs;
+            return acc;
+        }, {});
+        const eraEmojis = erasWithSongs.reduce((acc, era) => {
+            acc[era.id] = era.emoji;
+            acc[era.name] = era.emoji;
+            return acc;
+        }, {});
+        eraEmojis['eras'] = '✨';
+
+        // --- State ---
+        let savedData = {};
+        let currentSelectionOrders = {};
+        let activeTabId = 'eras';
+        let currentScreen = 'dashboard';
+        let currentSidebarTabId = null;
+        let currentSidebarView = 'rankings'; // 'rankings' or 'review'
+
+        // --- DOM Elements ---
+        const screenDashboard = document.getElementById('screen-dashboard');
+        const screenEdit = document.getElementById('screen-edit');
+        const tabButtonsContainer = document.getElementById('tab-buttons');
+        const tabPanelsContainer = document.getElementById('tab-panels');
+        const dashboardGridContainer = document.getElementById('dashboard-grid');
+        const saveConfirmModal = document.getElementById('save-confirm-modal');
+        const viewSidebar = document.getElementById('view-sidebar');
+        const sidebarTitleContainer = document.getElementById('sidebar-title-container');
+        const sidebarChipContainer = document.getElementById('sidebar-chip-container');
+        const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+        // Sidebar Tabs/Panels
+        const sidebarTabNav = document.getElementById('sidebar-tab-nav');
+        const sidebarTabButtonReview = document.getElementById('sidebar-tab-button-review');
+        const sidebarPanelRankings = document.getElementById('sidebar-panel-rankings');
+        const sidebarPanelReview = document.getElementById('sidebar-panel-review');
+        // Review View Elements
+        const reviewDisplayArea = document.getElementById('review-display-area');
+        const reviewDisplayStars = document.getElementById('review-display-stars');
+        const reviewDisplayComment = document.getElementById('review-display-comment');
+        const editReviewBtn = document.getElementById('edit-review-btn');
+        // Review Edit Elements
+        const reviewEditorForm = document.getElementById('review-editor-form');
+        const reviewEditorEraName = document.getElementById('review-editor-era-name');
+        const reviewEditorCommentInput = document.getElementById('review-editor-comment-input');
+        const reviewEditorCommentCharCount = document.getElementById('review-editor-comment-char-count');
+        const reviewEditorRatingInputs = document.querySelectorAll('#review-editor-form .star-rating input[name="review-editor-rating"]');
+        const reviewEditorRatingDescription = document.getElementById('review-editor-rating-description');
+        const cancelEditReviewBtn = document.getElementById('cancel-edit-review-btn');
+        const saveReviewBtn = document.getElementById('save-review-btn');
+
+
+        // --- Utility Functions ---
+        function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
+        function showModal(modalElement) { modalElement.classList.add('visible'); }
+        function hideModal(modalElement) { modalElement.classList.remove('visible'); }
+
+        function showScreen(screenId) {
+            closeViewSidebar();
+            if (screenId === 'dashboard') {
+                screenDashboard.classList.remove('hidden');
+                screenEdit.classList.add('hidden');
+                currentScreen = 'dashboard';
+                populateDashboard();
+            } else if (screenId === 'edit') {
+                currentSelectionOrders = {};
+                Object.keys(savedData).forEach(key => {
+                    if (Array.isArray(savedData[key])) {
+                        currentSelectionOrders[key] = deepCopy(savedData[key]);
+                    } else if (typeof savedData[key] === 'object' && savedData[key]?.selection) {
+                        currentSelectionOrders[key] = deepCopy(savedData[key].selection);
+                    }
+                });
+                initializeTabs();
+                Object.keys(currentSelectionOrders).forEach(tabId => {
+                    reorderChipsInContainer(tabId);
+                    updateTabButtonCount(tabId);
+                });
+                switchTab('eras', true);
+                screenDashboard.classList.add('hidden');
+                screenEdit.classList.remove('hidden');
+                screenEdit.classList.add('flex');
+                currentScreen = 'edit';
+            }
+        }
+
+        // --- Persistence Functions ---
+        function loadRankings() {
+            try {
+                const dataStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+                savedData = dataStr ? JSON.parse(dataStr) : {};
+                if (!savedData['eras']) savedData['eras'] = [];
+                erasWithSongs.forEach(era => {
+                    if (!savedData[era.id]) {
+                        savedData[era.id] = { selection: [], rating: 0, comment: '' };
+                    } else if (savedData[era.id].selection === undefined) {
+                         savedData[era.id] = { selection: [], rating: savedData[era.id].rating || 0, comment: savedData[era.id].comment || '' };
+                    }
+                });
+                console.log("Data loaded:", savedData);
+            } catch (e) {
+                console.error("Failed to load data:", e);
+                savedData = { eras: [] };
+                erasWithSongs.forEach(era => {
+                    savedData[era.id] = { selection: [], rating: 0, comment: '' };
+                });
+            }
+        }
+
+        function saveRankings() { // Saves ranking selections from edit screen
+            try {
+                 Object.keys(currentSelectionOrders).forEach(tabId => {
+                     if (tabId === 'eras') {
+                         savedData['eras'] = deepCopy(currentSelectionOrders['eras']);
+                     } else if (savedData[tabId]) {
+                         savedData[tabId].selection = deepCopy(currentSelectionOrders[tabId] || []);
+                     }
+                 });
+                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedData));
+                 console.log("Rankings saved:", savedData);
+                 return true;
+            } catch (e) {
+                console.error("Failed to save rankings:", e);
+                alert("Error saving rankings!");
+                return false;
+            }
+        }
+
+        function saveReview(tabId, rating, comment) { // Saves review directly
+             if (tabId === 'eras' || !savedData[tabId]) return false;
+             try {
+                 savedData[tabId].rating = rating;
+                 savedData[tabId].comment = comment;
+                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedData));
+                 console.log(`Review saved for ${tabId}:`, savedData[tabId]);
+                 return true;
+             } catch (e) {
+                 console.error(`Failed to save review for ${tabId}:`, e);
+                 alert("Error saving review!");
+                 return false;
+             }
+        }
+
+        // --- Dashboard Functions ---
+        function populateDashboard() {
+            dashboardGridContainer.innerHTML = '';
+            createDashboardGridItem('eras', 'Eras', eraNamesInOrder.length);
+            erasWithSongs.forEach(era => {
+                createDashboardGridItem(era.id, era.name, era.songs.length);
+            });
+        }
+
+        /**
+         * Creates the HTML for the rank indicator (pill shape, medal emojis).
+         * @param {number} rank - The rank number (1, 2, or 3).
+         * @returns {string} - The HTML string for the rank indicator.
+         */
+        function createRankIndicatorHTML(rank) {
+            let emojiHTML = '';
+            if (rank === 1) emojiHTML = '<span class="emoji">👑</span>';
+            else if (rank === 2) emojiHTML = '<span class="emoji">🥈</span>';
+            else if (rank === 3) emojiHTML = '<span class="emoji">🥉</span>';
+            return `<span class="chip-rank-indicator">${emojiHTML}${rank}</span>`;
+        }
+
+        /**
+         * Creates a single grid item for the dashboard with emoji, rank badge, and star rating.
+         * @param {string} tabId - The ID of the corresponding tab ('eras' or era.id).
+         * @param {string} title - The name to display (e.g., 'Eras', 'folklore').
+         * @param {number} totalCount - The total number of items available for this tab.
+         */
+        function createDashboardGridItem(tabId, title, totalCount) {
+            const card = document.createElement('div');
+            card.className = 'dashboard-grid-card no-hover-highlight';
+            card.dataset.tabId = tabId;
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+
+            const eraData = savedData[tabId];
+            const selectedCount = (tabId === 'eras' ? eraData?.length : eraData?.selection?.length) || 0;
+            const rating = (tabId !== 'eras' ? eraData?.rating : 0) || 0;
+            const emoji = eraEmojis[tabId] || eraEmojis[title] || '';
+            let rank = -1;
+            let rankIndicatorHTML = '';
+            let starsHTML = '<span class="dashboard-stars">&nbsp;</span>';
+
+            if (tabId !== 'eras') {
+                const eraRankIndex = (savedData['eras'] || []).indexOf(title);
+                if (eraRankIndex !== -1) {
+                    rank = eraRankIndex + 1;
+                    rankIndicatorHTML = `<div class="dashboard-rank-indicator-wrapper">${createRankIndicatorHTML(rank)}</div>`;
+                }
+                if (rating > 0) {
+                    starsHTML = `<span class="dashboard-stars">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span>`;
+                }
+            }
+            card.dataset.rank = rank > 0 ? rank : '';
+
+            if (selectedCount > 0) card.classList.add('selected');
+            if (selectedCount === MAX_SELECTION) card.classList.add('all-selected');
+
+            card.innerHTML = `
+                ${rankIndicatorHTML}
+                <span class="card-title"><span class="emoji">${emoji}</span>${title}</span>
+                <span class="card-count">${selectedCount} of ${totalCount}</span>
+                ${starsHTML}
+            `;
+
+            card.addEventListener('click', handleDashboardCardClick);
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDashboardCardClick(e); }
+            });
+            dashboardGridContainer.appendChild(card);
+        }
+
+
+        function handleDashboardCardClick(event) {
+            const card = event.currentTarget;
+            const tabId = card.dataset.tabId;
+            const rank = card.dataset.rank;
+            if (tabId) {
+                openViewSidebar(tabId, rank);
+            }
+        }
+
+
+        // --- Sidebar Functions ---
+        /**
+         * Opens the sidebar, populates chips/review display, and sets up tabs.
+         * @param {string} tabId - The ID of the tab to display.
+         * @param {string} [rank=''] - The rank of the Era (if applicable).
+         */
+        function openViewSidebar(tabId, rank = '') {
+            currentSidebarTabId = tabId;
+            const eraData = erasWithSongs.find(e => e.id === tabId || e.name === tabId);
+            const baseTitle = (tabId === 'eras') ? 'Eras' : (eraData?.name || 'Rankings');
+            const emoji = eraEmojis[tabId] || eraEmojis[baseTitle] || '';
+
+            // Build title container content
+            let titleContainerHTML = `<span class="emoji">${emoji}</span>`;
+            titleContainerHTML += `<span class="sidebar-title title-text">${baseTitle}</span>`;
+            if (tabId !== 'eras' && rank) {
+                titleContainerHTML += createRankIndicatorHTML(parseInt(rank, 10));
+            }
+            sidebarTitleContainer.innerHTML = titleContainerHTML;
+
+            // Populate Chips (Rankings Panel)
+            sidebarChipContainer.innerHTML = '';
+            const allTags = (tabId === 'eras') ? eraNamesInOrder : (originalSongLists[tabId] || []);
+            const savedSelection = (tabId === 'eras' ? savedData['eras'] : savedData[tabId]?.selection) || [];
+            const displayOrder = [];
+            const unselectedTags = [];
+            allTags.forEach(tag => { if (!savedSelection.includes(tag)) unselectedTags.push(tag); });
+            savedSelection.forEach(tag => displayOrder.push(tag));
+            unselectedTags.forEach(tag => displayOrder.push(tag));
+
+            displayOrder.forEach(tag => {
+                const chipDiv = document.createElement('div');
+                chipDiv.className = 'sidebar-chip';
+                const indexInSelection = savedSelection.indexOf(tag);
+                if (indexInSelection !== -1) {
+                    chipDiv.classList.add('selected');
+                    const rankNum = indexInSelection + 1;
+                    chipDiv.innerHTML = createRankIndicatorHTML(rankNum);
+                }
+                chipDiv.appendChild(document.createTextNode(tag));
+                sidebarChipContainer.appendChild(chipDiv);
+            });
+
+            // Populate Review Display (Review Panel)
+            if (tabId !== 'eras' && savedData[tabId]) {
+                const rating = savedData[tabId].rating || 0;
+                const comment = savedData[tabId].comment || '';
+                reviewDisplayStars.innerHTML = rating > 0 ? '★'.repeat(rating) + '☆'.repeat(5 - rating) : '';
+                reviewDisplayStars.classList.toggle('unrated', rating === 0);
+                reviewDisplayComment.textContent = comment;
+                if (rating === 0 && !comment) {
+                    reviewDisplayArea.innerHTML = '<p class="no-review">No review yet.</p>';
+                } else {
+                     if (!reviewDisplayArea.contains(reviewDisplayStars)) reviewDisplayArea.prepend(reviewDisplayStars);
+                     if (!reviewDisplayArea.contains(reviewDisplayComment)) reviewDisplayArea.appendChild(reviewDisplayComment);
+                }
+                sidebarTabButtonReview.classList.remove('hidden'); // Show review tab
+                hideReviewEditor(); // Ensure editor is hidden initially
+            } else {
+                sidebarTabButtonReview.classList.add('hidden'); // Hide review tab for 'Eras'
+            }
+
+            // Set initial sidebar tab state (Rankings active)
+            switchSidebarTab('rankings');
+
+            viewSidebar.classList.add('visible');
+        }
+
+
+        function closeViewSidebar() {
+            viewSidebar.classList.remove('visible');
+            currentSidebarTabId = null;
+        }
+
+        // --- Sidebar Tab Switching ---
+        function switchSidebarTab(targetPanelId) {
+            const buttons = sidebarTabNav.querySelectorAll('.sidebar-tab-button');
+            const panels = document.querySelectorAll('#sidebar-tab-panels .sidebar-tab-panel');
+
+            buttons.forEach(button => {
+                const isActive = button.dataset.target === `#${targetPanelId}`;
+                button.classList.toggle('active', isActive);
+            });
+
+            panels.forEach(panel => {
+                panel.classList.toggle('hidden', panel.id !== targetPanelId);
+            });
+            currentSidebarView = targetPanelId.replace('sidebar-panel-', ''); // Update state
+        }
+
+        // --- Review Editor Functions (within Sidebar Panel) ---
+        function showReviewEditor() {
+             if (!currentSidebarTabId || currentSidebarTabId === 'eras') return;
+             const eraData = savedData[currentSidebarTabId];
+             const eraInfo = erasWithSongs.find(e => e.id === currentSidebarTabId);
+             if (!eraData || !eraInfo) return;
+
+             // Hide display, show editor within the review panel
+             reviewDisplayArea.classList.add('hidden');
+             editReviewBtn.classList.add('hidden');
+             reviewEditorForm.classList.remove('hidden');
+
+             reviewEditorEraName.textContent = eraInfo.name;
+
+             // Set initial values in editor
+             const currentRating = eraData.rating || 0;
+             reviewEditorRatingInputs.forEach(input => {
+                 input.checked = parseInt(input.value, 10) === currentRating;
+             });
+             updateReviewEditorRatingDescription(currentRating);
+             reviewEditorCommentInput.value = eraData.comment || '';
+             updateReviewEditorCharCount();
+        }
+
+        function hideReviewEditor() {
+            // Show display, hide editor within the review panel
+            reviewDisplayArea.classList.remove('hidden');
+            editReviewBtn.classList.remove('hidden');
+            reviewEditorForm.classList.add('hidden');
+        }
+
+        function updateReviewEditorRatingDescription(ratingValue) {
+             reviewEditorRatingDescription.textContent = RATING_DESCRIPTIONS[ratingValue] || '\u00A0';
+        }
+
+        function updateReviewEditorCharCount() {
+            const currentLength = reviewEditorCommentInput.value.length;
+            reviewEditorCommentCharCount.textContent = `${currentLength} / ${COMMENT_MAX_LENGTH}`;
+        }
+
+
+        // --- Chip/Tab Functions (Using currentSelectionOrders) ---
+        // ... (logCurrentSelection, updateTabButtonCount, reorderChipsInContainer, updateChipRanksAndStyles, handleChipClick, handleChipKeyDown, populateChips, switchTab, initializeTabs, createTab remain largely the same as previous version) ...
+        function logCurrentSelection() {
+            const currentSelection = currentSelectionOrders[activeTabId] || [];
+            console.log(`Selection order for ${activeTabId}:`, currentSelection);
+        }
+
+        function updateTabButtonCount(tabId) {
+            const button = document.getElementById(`tab-button-${tabId}`);
+            if (!button) return;
+            const countSpan = button.querySelector('.tab-count');
+            const totalTags = parseInt(button.dataset.totalTags || '0', 10);
+            const selectedCount = (currentSelectionOrders[tabId] || []).length;
+            if (countSpan) {
+                countSpan.textContent = `${selectedCount} of ${totalTags}`;
+            }
+        }
+
+        function reorderChipsInContainer(tabId) {
+            const panel = document.getElementById(`panel-${tabId}`);
+            if (!panel) return;
+            const chipContainer = panel.querySelector('.chip-container');
+            if (!chipContainer) return;
+
+            const currentSelection = currentSelectionOrders[tabId] || [];
+            const allChips = Array.from(chipContainer.querySelectorAll('.chip'));
+            const selectedChips = [];
+            const unselectedChips = [];
+            allChips.forEach(chip => {
+                if (currentSelection.includes(chip.dataset.tag)) selectedChips.push(chip);
+                else unselectedChips.push(chip);
+            });
+
+            selectedChips.sort((a, b) => currentSelection.indexOf(a.dataset.tag) - currentSelection.indexOf(b.dataset.tag));
+            const originalList = (tabId === 'eras') ? eraNamesInOrder : (originalSongLists[tabId] || []);
+            unselectedChips.sort((a, b) => originalList.indexOf(a.dataset.tag) - originalList.indexOf(b.dataset.tag));
+
+            chipContainer.innerHTML = '';
+            selectedChips.forEach(chip => chipContainer.appendChild(chip));
+            unselectedChips.forEach(chip => chipContainer.appendChild(chip));
+
+            updateChipRanksAndStyles(tabId);
+        }
+
+        function updateChipRanksAndStyles(tabId) {
+            const panel = document.getElementById(`panel-${tabId}`);
+            if (!panel) return;
+            const chipContainer = panel.querySelector('.chip-container');
+            if (!chipContainer) return;
+
+            const chips = chipContainer.querySelectorAll('.chip');
+            const currentSelection = currentSelectionOrders[tabId] || [];
+            const isMaxSelected = currentSelection.length >= MAX_SELECTION;
+
+            chips.forEach(chip => {
+                const tag = chip.dataset.tag;
+                const indexInSelection = currentSelection.indexOf(tag);
+                chip.innerHTML = '';
+                chip.classList.remove('disabled', 'opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+
+                if (indexInSelection !== -1) {
+                    const rank = indexInSelection + 1;
+                    chip.innerHTML = createRankIndicatorHTML(rank);
+                    chip.appendChild(document.createTextNode(tag));
+                    chip.setAttribute('aria-checked', 'true');
+                    chip.dataset.rank = rank;
+                    chip.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+                    chip.classList.remove('border-gray-300', 'bg-gray-100', 'text-gray-700');
+                } else {
+                    chip.appendChild(document.createTextNode(tag));
+                    chip.setAttribute('aria-checked', 'false');
+                    delete chip.dataset.rank;
+                    chip.classList.add('border-gray-300', 'bg-gray-100', 'text-gray-700');
+                    chip.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                    if (isMaxSelected) {
+                        chip.classList.add('disabled', 'opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        chip.classList.remove('bg-gray-100', 'border-gray-300', 'text-gray-700');
+                        chip.classList.add('bg-gray-100', 'border-gray-200', 'text-gray-400');
+                    } else {
+                        chip.classList.remove('bg-gray-100', 'border-gray-200', 'text-gray-400');
+                        chip.classList.add('bg-gray-100', 'border-gray-300', 'text-gray-700');
+                    }
+                }
+            });
+        }
+
+
+        function handleChipClick(event) {
+            event.preventDefault();
+            const chip = event.currentTarget;
+            const tag = chip.dataset.tag;
+            const chipContainer = chip.closest('.chip-container');
+            const tabId = chipContainer?.dataset.tabId;
+            if (!tabId || chip.classList.contains('disabled')) return;
+
+            if (!currentSelectionOrders[tabId]) {
+                currentSelectionOrders[tabId] = [];
+            }
+            let currentSelection = currentSelectionOrders[tabId];
+            const isSelected = currentSelection.includes(tag);
+
+            if (!isSelected) {
+                if (currentSelection.length >= MAX_SELECTION) {
+                    alert(`You can only select up to ${MAX_SELECTION} items for this tab.`);
+                    return;
+                }
+                currentSelection.push(tag);
+            } else {
+                currentSelectionOrders[tabId] = currentSelection.filter(selectedTag => selectedTag !== tag);
+            }
+
+            reorderChipsInContainer(tabId);
+            updateTabButtonCount(tabId);
+            logCurrentSelection();
+        }
+
+        function handleChipKeyDown(event) {
+             const chip = event.currentTarget;
+             if (chip.classList.contains('disabled')) {
+                 event.preventDefault();
+                 return;
+             }
+            if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                handleChipClick(event);
+            }
+        }
+
+        function populateChips(tabId, tags) {
+            const panel = document.getElementById(`panel-${tabId}`);
+            if (!panel) return;
+            const chipContainer = panel.querySelector('.chip-container');
+            if (!chipContainer) return;
+            chipContainer.innerHTML = '';
+            const tagsToPopulate = (tabId === 'eras') ? eraNamesInOrder : (originalSongLists[tabId] || []);
+            tagsToPopulate.forEach((tag) => {
+                const chip = document.createElement('div');
+                chip.className = 'chip no-hover-highlight border border-gray-300 bg-gray-100 text-gray-700 text-sm font-medium rounded-full cursor-pointer transition-colors';
+                chip.dataset.tag = tag;
+                chip.setAttribute('role', 'checkbox');
+                chip.setAttribute('aria-checked', 'false');
+                chip.setAttribute('tabindex', '0');
+                chip.addEventListener('touchstart', handleChipClick, { passive: false });
+                chip.addEventListener('click', handleChipClick);
+                chip.addEventListener('keydown', handleChipKeyDown);
+                chipContainer.appendChild(chip);
+            });
+             updateChipRanksAndStyles(tabId);
+        }
+
+        function switchTab(targetTabId, force = false) {
+            if (!force && activeTabId === targetTabId) return;
+
+            const currentTabButton = document.getElementById(`tab-button-${activeTabId}`);
+            const currentPanel = document.getElementById(`panel-${activeTabId}`);
+            if (currentTabButton) {
+                currentTabButton.classList.remove('active', 'border-blue-500', 'bg-blue-50', 'text-blue-600', 'font-semibold');
+                currentTabButton.classList.add('border-transparent', 'text-gray-500');
+                currentTabButton.setAttribute('aria-selected', 'false');
+            }
+             if (currentPanel) {
+                 currentPanel.classList.add('hidden');
+             }
+
+            const newTabButton = document.getElementById(`tab-button-${targetTabId}`);
+            const newPanel = document.getElementById(`panel-${targetTabId}`);
+            if (newTabButton) {
+                newTabButton.classList.add('active', 'border-blue-500', 'bg-blue-50', 'text-blue-600', 'font-semibold');
+                newTabButton.classList.remove('border-transparent', 'text-gray-500');
+                newTabButton.setAttribute('aria-selected', 'true');
+                 newTabButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+             if (newPanel) {
+                 newPanel.classList.remove('hidden');
+             }
+
+            activeTabId = targetTabId;
+            logCurrentSelection();
+        }
+
+        function initializeTabs() {
+            tabButtonsContainer.innerHTML = '';
+            tabPanelsContainer.innerHTML = '';
+            const erasTags = erasWithSongs.map(era => era.name);
+            createTab('eras', 'Eras', erasTags, true);
+            erasWithSongs.forEach(era => {
+                createTab(era.id, era.name, era.songs);
+            });
+             Object.keys(currentSelectionOrders).forEach(tabId => {
+                 updateTabButtonCount(tabId);
+             });
+        }
+
+        function createTab(tabId, tabName, tags, isActive = false) {
+            const button = document.createElement('button');
+            const baseButtonClasses = 'tab-button no-hover-highlight flex flex-col items-center whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm'; // Increased base px-2
+            const activeClasses = 'active border-blue-500 bg-blue-50 text-blue-600 font-semibold';
+            const inactiveClasses = 'border-transparent text-gray-500';
+            button.className = `${baseButtonClasses} ${isActive ? activeClasses : inactiveClasses}`;
+            button.dataset.tabTarget = `#panel-${tabId}`;
+            button.dataset.totalTags = tags.length;
+            button.setAttribute('role', 'tab');
+            button.setAttribute('aria-controls', `panel-${tabId}`);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            button.id = `tab-button-${tabId}`;
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = tabName;
+            button.appendChild(nameSpan);
+            const countSpan = document.createElement('span');
+            countSpan.className = 'tab-count text-xs text-gray-400 mt-1';
+            // Use selection from currentSelectionOrders for initial count
+            const initialSelectedCount = (currentSelectionOrders[tabId] || []).length;
+            countSpan.textContent = `${initialSelectedCount} of ${tags.length}`;
+            button.appendChild(countSpan);
+            button.addEventListener('click', () => switchTab(tabId));
+            tabButtonsContainer.appendChild(button);
+
+            const panel = document.createElement('div');
+            panel.id = `panel-${tabId}`;
+            panel.className = `tab-panel ${isActive ? '' : 'hidden'}`;
+            panel.setAttribute('role', 'tabpanel');
+            panel.setAttribute('aria-labelledby', `tab-button-${tabId}`);
+            const titleText = tabId === 'eras' ? 'Select up to 3 Eras:' : `Select up to 3 Songs from ${tabName}:`;
+            panel.innerHTML = `
+                <h2 class="text-lg font-semibold text-gray-700 mb-4">${titleText}</h2>
+                 {/* Increased gap */}
+                <div class="chip-container flex flex-wrap gap-3 mb-6" data-tab-id="${tabId}"></div>
+            `;
+            tabPanelsContainer.appendChild(panel);
+            populateChips(tabId, tags);
+        }
+
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            // Screen Navigation
+            document.getElementById('edit-rankings-btn')?.addEventListener('click', () => showScreen('edit'));
+            document.getElementById('cancel-edit-btn')?.addEventListener('click', () => showScreen('dashboard'));
+
+            // Save Confirmation Modal
+            document.getElementById('save-edit-btn')?.addEventListener('click', () => showModal(saveConfirmModal));
+            document.getElementById('cancel-save-modal-btn')?.addEventListener('click', () => hideModal(saveConfirmModal));
+            document.getElementById('confirm-save-modal-btn')?.addEventListener('click', () => {
+                if (saveRankings()) { // Saves selections from edit screen
+                     hideModal(saveConfirmModal);
+                     showScreen('dashboard');
+                }
+            });
+
+            // Sidebar
+            sidebarCloseBtn?.addEventListener('click', closeViewSidebar);
+            // Add listeners for sidebar tabs
+            sidebarTabNav?.querySelectorAll('.sidebar-tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    switchSidebarTab(button.dataset.target.substring(1)); // Remove #
+                });
+            });
+
+
+            // Review Section (within Sidebar Tab Panel)
+            editReviewBtn?.addEventListener('click', showReviewEditor);
+            cancelEditReviewBtn?.addEventListener('click', hideReviewEditor);
+            reviewEditorCommentInput?.addEventListener('input', updateReviewEditorCharCount);
+            reviewEditorRatingInputs?.forEach(input => {
+                 input.addEventListener('change', (e) => {
+                     updateReviewEditorRatingDescription(parseInt(e.target.value, 10));
+                 });
+            });
+            saveReviewBtn?.addEventListener('click', () => {
+                 if (currentSidebarTabId && currentSidebarTabId !== 'eras') {
+                     const selectedRatingInput = document.querySelector('#review-editor-form .star-rating input[name="review-editor-rating"]:checked');
+                     const rating = selectedRatingInput ? parseInt(selectedRatingInput.value, 10) : 0;
+                     const comment = reviewEditorCommentInput.value.trim();
+
+                     if (saveReview(currentSidebarTabId, rating, comment)) {
+                         // Update the view-only display immediately
+                         reviewDisplayStars.innerHTML = rating > 0 ? '★'.repeat(rating) + '☆'.repeat(5 - rating) : '';
+                         reviewDisplayStars.classList.toggle('unrated', rating === 0);
+                         reviewDisplayComment.textContent = comment;
+                          if (rating === 0 && !comment) {
+                             reviewDisplayArea.innerHTML = '<p class="no-review">No review yet.</p>';
+                          } else {
+                              if (!reviewDisplayArea.contains(reviewDisplayStars)) reviewDisplayArea.prepend(reviewDisplayStars);
+                              if (!reviewDisplayArea.contains(reviewDisplayComment)) reviewDisplayArea.appendChild(reviewDisplayComment);
+                          }
+
+                         hideReviewEditor(); // Go back to view mode
+                         populateDashboard(); // Refresh dashboard to show new rating
+                     }
+                 }
+            });
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRankings();
+            setupEventListeners();
+            showScreen('dashboard'); // Start on the dashboard
+        });
+
+    </script>
+
+</body>
+</html>
+
+
