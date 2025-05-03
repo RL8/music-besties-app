@@ -196,6 +196,7 @@ export default {
         savedData[tabId].rating = rating;
         savedData[tabId].comment = comment;
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedData));
+        console.log(`Review saved for ${tabId}:`, { rating, comment });
         return true;
       } catch (e) {
         console.error(`Failed to save review for ${tabId}:`, e);
