@@ -18,30 +18,20 @@
     <div class="flex-grow overflow-y-auto p-4 bg-gray-50">
       <div v-if="activeTabId === 'eras'" class="mb-4">
         <p class="text-sm text-gray-500 mb-2">
-          Drag to reorder. Top = favorite.
+          Tap to rank. Top items are your favorites.
         </p>
         <div class="mb-4">
-          <div class="flex flex-col space-y-2">
-            <draggable-item 
-              v-for="(item, index) in currentItems" 
-              :key="item"
-              :item="item"
-              :index="index"
-              :list="currentItems"
-              :max-selection="maxSelection"
-            />
-          </div>
-        </div>
-        <div class="mt-6">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Available Items</h3>
           <div class="flex flex-wrap gap-2">
             <button 
-              v-for="item in availableItems" 
+              v-for="item in sortedItems" 
               :key="item"
-              @click="addItem(item)"
-              class="chip bg-white border border-gray-200 rounded-full text-sm"
-              :class="{ 'disabled': currentItems.length >= maxSelection }"
+              @click="toggleItemRank(item)"
+              class="chip py-1 px-3 rounded-full text-sm"
+              :class="getItemClass(item)"
             >
+              <span v-if="isItemRanked(item)" class="chip-rank-indicator mr-1">
+                {{ getRankNumber(item) }}
+              </span>
               {{ item }}
             </button>
           </div>
@@ -49,30 +39,20 @@
       </div>
       <div v-else class="mb-4">
         <p class="text-sm text-gray-500 mb-2">
-          Drag to reorder. Top = favorite.
+          Tap to rank. Top items are your favorites.
         </p>
         <div class="mb-4">
-          <div class="flex flex-col space-y-2">
-            <draggable-item 
-              v-for="(item, index) in currentItems" 
-              :key="item"
-              :item="item"
-              :index="index"
-              :list="currentItems"
-              :max-selection="maxSelection"
-            />
-          </div>
-        </div>
-        <div class="mt-6">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Available Songs</h3>
           <div class="flex flex-wrap gap-2">
             <button 
-              v-for="item in availableItems" 
+              v-for="item in sortedItems" 
               :key="item"
-              @click="addItem(item)"
-              class="chip bg-white border border-gray-200 rounded-full text-sm"
-              :class="{ 'disabled': currentItems.length >= maxSelection }"
+              @click="toggleItemRank(item)"
+              class="chip py-1 px-3 rounded-full text-sm"
+              :class="getItemClass(item)"
             >
+              <span v-if="isItemRanked(item)" class="chip-rank-indicator mr-1">
+                {{ getRankNumber(item) }}
+              </span>
               {{ item }}
             </button>
           </div>
@@ -84,14 +64,10 @@
 
 <script>
 import { computed } from 'vue';
-import DraggableItem from './DraggableItem.vue';
 import { MAX_SELECTION, erasWithSongs, eraNamesInOrder, originalSongLists, eraEmojis } from '../data';
 
 export default {
   name: 'EditRankingsTabs',
-  components: {
-    DraggableItem
-  },
   props: {
     activeTabId: {
       type: String,
@@ -136,24 +112,69 @@ export default {
       }
     });
     
-    const availableItems = computed(() => {
-      let allItems = [];
-      
+    const allItems = computed(() => {
       if (props.activeTabId === 'eras') {
-        allItems = [...eraNamesInOrder];
+        return [...eraNamesInOrder];
       } else {
         const era = erasWithSongs.find(e => e.id === props.activeTabId);
         if (era) {
-          allItems = [...era.songs];
+          return [...era.songs];
         }
       }
-      
-      // Filter out items that are already selected
-      return allItems.filter(item => !currentItems.value.includes(item));
+      return [];
     });
     
-    function addItem(item) {
-      if (currentItems.value.length < MAX_SELECTION) {
+    const sortedItems = computed(() => {
+      // Get all items for the current tab
+      const items = [...allItems.value];
+      
+      // Sort items so that ranked items come first, in order of rank
+      items.sort((a, b) => {
+        const aRanked = currentItems.value.includes(a);
+        const bRanked = currentItems.value.includes(b);
+        
+        if (aRanked && bRanked) {
+          // Both items are ranked, sort by rank number
+          return currentItems.value.indexOf(a) - currentItems.value.indexOf(b);
+        } else if (aRanked) {
+          // Only a is ranked, it should come first
+          return -1;
+        } else if (bRanked) {
+          // Only b is ranked, it should come first
+          return 1;
+        } else {
+          // Neither is ranked, maintain original order
+          return 0;
+        }
+      });
+      
+      return items;
+    });
+    
+    function isItemRanked(item) {
+      return currentItems.value.includes(item);
+    }
+    
+    function getRankNumber(item) {
+      return currentItems.value.indexOf(item) + 1;
+    }
+    
+    function getItemClass(item) {
+      if (isItemRanked(item)) {
+        return 'bg-blue-100 text-blue-800 border border-blue-200';
+      } else {
+        return 'bg-white border border-gray-200 text-gray-700';
+      }
+    }
+    
+    function toggleItemRank(item) {
+      const index = currentItems.value.indexOf(item);
+      
+      if (index !== -1) {
+        // Item is already ranked, remove it
+        currentItems.value.splice(index, 1);
+      } else if (currentItems.value.length < MAX_SELECTION) {
+        // Item is not ranked and we haven't reached the max selection
         currentItems.value.push(item);
       }
     }
@@ -161,9 +182,13 @@ export default {
     return {
       tabs,
       currentItems,
-      availableItems,
+      allItems,
+      sortedItems,
       maxSelection: MAX_SELECTION,
-      addItem
+      isItemRanked,
+      getRankNumber,
+      getItemClass,
+      toggleItemRank
     };
   }
 }

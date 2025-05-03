@@ -5,9 +5,11 @@
   >
     <div v-if="rank > 0" class="absolute top-1 left-1 chip-rank-indicator">
       {{ rank }}
-      <span v-if="emoji" class="emoji">{{ emoji }}</span>
     </div>
-    <h3 class="font-semibold text-gray-800 mb-1">{{ title }}</h3>
+    <h3 class="font-semibold text-gray-800 mb-1">
+      {{ title }}
+      <span v-if="emoji" class="ml-1">{{ emoji }}</span>
+    </h3>
     <div class="dashboard-stars" v-if="tabId !== 'eras'">
       <span v-if="rating > 0">
         {{ '★'.repeat(rating) }}{{ '☆'.repeat(5 - rating) }}

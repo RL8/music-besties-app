@@ -9,7 +9,10 @@
       @click.stop
     >
       <div class="flex justify-between items-center p-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-800">{{ tabTitle }}</h2>
+        <h2 class="text-lg font-semibold text-gray-800">
+          {{ tabTitle }}
+          <span v-if="tabEmoji" class="ml-1">{{ tabEmoji }}</span>
+        </h2>
         <button 
           @click="$emit('close')" 
           class="text-gray-500 p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
@@ -47,6 +50,7 @@
               >
                 <div class="chip-rank-indicator mr-2">{{ index + 1 }}</div>
                 {{ era }}
+                <span v-if="getEraEmoji(era)" class="ml-1">{{ getEraEmoji(era) }}</span>
               </div>
             </div>
             <p v-else class="text-sm text-gray-400 italic">No rankings yet</p>
@@ -61,6 +65,7 @@
               >
                 <div class="chip-rank-indicator mr-2">{{ index + 1 }}</div>
                 {{ song }}
+                <span v-if="getSongEmoji(song)" class="ml-1">{{ getSongEmoji(song) }}</span>
               </div>
             </div>
             <p v-else class="text-sm text-gray-400 italic">No rankings yet</p>
@@ -116,7 +121,7 @@
 
 <script>
 import { ref, computed, watch } from 'vue';
-import { erasWithSongs } from '../data';
+import { erasWithSongs, eraEmojis, songEmojis } from '../data';
 
 export default {
   name: 'SidebarPanel',
@@ -159,6 +164,16 @@ export default {
       return '';
     });
     
+    const tabEmoji = computed(() => {
+      if (props.currentTabId === 'eras') {
+        return eraEmojis['eras'];
+      } else if (props.currentTabId) {
+        const era = erasWithSongs.find(e => e.id === props.currentTabId);
+        return era ? era.emoji : '';
+      }
+      return '';
+    });
+    
     const eraRankings = computed(() => {
       return props.savedData['eras'] || [];
     });
@@ -169,6 +184,15 @@ export default {
       }
       return [];
     });
+    
+    function getEraEmoji(eraName) {
+      const era = erasWithSongs.find(e => e.name === eraName);
+      return era ? era.emoji : '';
+    }
+    
+    function getSongEmoji(songName) {
+      return songEmojis[songName] || '';
+    }
     
     // Watch for changes in currentTabId to update rating and comment
     watch(() => props.currentTabId, (newTabId) => {
@@ -191,13 +215,11 @@ export default {
     
     function submitReview() {
       if (props.currentTabId && props.currentTabId !== 'eras') {
-        const success = emit('save-review', props.currentTabId, rating.value, comment.value);
-        if (success) {
-          showSavedMessage.value = true;
-          setTimeout(() => {
-            showSavedMessage.value = false;
-          }, 3000);
-        }
+        emit('save-review', props.currentTabId, rating.value, comment.value);
+        showSavedMessage.value = true;
+        setTimeout(() => {
+          showSavedMessage.value = false;
+        }, 3000);
       }
     }
     
@@ -207,9 +229,12 @@ export default {
       showSavedMessage,
       sidebarTabs,
       tabTitle,
+      tabEmoji,
       eraRankings,
       songRankings,
-      submitReview
+      submitReview,
+      getEraEmoji,
+      getSongEmoji
     };
   }
 }

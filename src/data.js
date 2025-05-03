@@ -31,6 +31,10 @@ export const eraEmojis = {
   'midnights': '✨'
 };
 
+// Song Emojis - We're not adding emojis for each individual song to keep it simple
+// This is a placeholder that can be expanded later if needed
+export const songEmojis = {};
+
 // Eras with Songs
 export const erasWithSongs = [
   {
