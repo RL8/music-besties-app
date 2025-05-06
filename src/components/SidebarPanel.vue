@@ -31,7 +31,7 @@
             <button 
               v-for="tab in sidebarTabs" 
               :key="tab.id"
-              @click="$emit('switch-tab', tab.id)"
+              @click="handleTabClick(tab)"
               class="flex-1 py-3 text-sm font-medium"
               :class="tab.id === 'sidebar-panel-' + currentView ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'"
             >
@@ -199,6 +199,11 @@ export default {
       return songEmojis[songName] || '';
     }
     
+    function handleTabClick(tab) {
+      console.log(`Tab clicked: ${tab.name}`);
+      emit('switch-tab', tab.id);
+    }
+    
     // Watch for changes in currentTabId to update rating and comment
     watch(() => props.currentTabId, (newTabId) => {
       if (newTabId && newTabId !== 'eras' && props.savedData[newTabId]) {
@@ -239,7 +244,8 @@ export default {
       songRankings,
       submitReview,
       getEraEmoji,
-      getSongEmoji
+      getSongEmoji,
+      handleTabClick
     };
   }
 }

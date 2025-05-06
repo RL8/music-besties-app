@@ -21,7 +21,7 @@
     </router-view>
 
     <!-- Dashboard View -->
-    <div v-show="currentScreen === 'dashboard' && !isRouterView" class="p-4 sm:p-6">
+    <div v-show="currentScreen === 'dashboard' && !isRouterView && !isStateView" class="p-4 sm:p-6">
       <div class="flex justify-between items-center mb-6">
         <div class="flex items-center">
           <button 
@@ -58,7 +58,7 @@
     </div>
 
     <!-- Edit Rankings View -->
-    <div v-show="currentScreen === 'edit' && !isRouterView" class="flex flex-col min-h-screen">
+    <div v-show="currentScreen === 'edit' && !isRouterView && !isStateView" class="flex flex-col min-h-screen">
       <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
         <button @click="showScreen('dashboard')" class="text-red-600 font-medium px-3 py-1 rounded active:bg-red-100 transition-colors no-hover-highlight">Cancel</button>
         <h2 class="text-lg font-semibold text-gray-700">Edit Rankings</h2>
@@ -71,6 +71,34 @@
         @switch-tab="switchTab"
       />
     </div>
+
+    <!-- State-based Views -->
+    <template v-if="isStateView">
+      <!-- About View -->
+      <about-view 
+        v-if="appViews.current === 'about'" 
+        :params="appViews.params"
+        @go-back="goBackView"
+      />
+      <!-- Profile View -->
+      <profile-view 
+        v-if="appViews.current === 'profile'" 
+        :params="appViews.params"
+        @go-back="goBackView"
+      />
+      <!-- Settings View -->
+      <settings-view 
+        v-if="appViews.current === 'settings'" 
+        :params="appViews.params"
+        @go-back="goBackView"
+      />
+      <!-- Terms View -->
+      <terms-view 
+        v-if="appViews.current === 'terms'" 
+        :params="appViews.params"
+        @go-back="goBackView"
+      />
+    </template>
 
     <!-- Save Confirmation Modal -->
     <modal-dialog 
@@ -96,6 +124,7 @@
     <left-sidebar
       :visible="isLeftSidebarVisible"
       @close="closeLeftSidebar"
+      @navigate="navigateToView"
     />
   </div>
 </template>
@@ -108,6 +137,10 @@ import EditRankingsTabs from './components/EditRankingsTabs.vue';
 import ModalDialog from './components/ModalDialog.vue';
 import SidebarPanel from './components/SidebarPanel.vue';
 import LeftSidebar from './components/LeftSidebar.vue';
+import AboutView from './components/AboutView.vue'; // Import AboutView component
+import ProfileView from './components/ProfileView.vue'; // Import ProfileView component
+import SettingsView from './components/SettingsView.vue'; // Import SettingsView component
+import TermsView from './components/TermsView.vue'; // Import TermsView component
 import { MAX_SELECTION, LOCAL_STORAGE_KEY, erasWithSongs, eraNamesInOrder, originalSongLists, eraEmojis } from './data';
 
 export default {
@@ -117,7 +150,11 @@ export default {
     EditRankingsTabs,
     ModalDialog,
     SidebarPanel,
-    LeftSidebar
+    LeftSidebar,
+    AboutView, // Register AboutView component
+    ProfileView, // Register ProfileView component
+    SettingsView, // Register SettingsView component
+    TermsView // Register TermsView component
   },
   setup() {
     // Router
@@ -133,10 +170,22 @@ export default {
     const currentSidebarTabId = ref(null);
     const currentSidebarView = ref('rankings');
     const isLeftSidebarVisible = ref(false);
+    
+    // State-based navigation
+    const appViews = reactive({
+      current: '',
+      params: {},
+      history: []
+    });
 
     // Determine if we should show router view or app screens
     const isRouterView = computed(() => {
       return route.path !== '/';
+    });
+
+    // Determine if we should show state-based view
+    const isStateView = computed(() => {
+      return appViews.current !== '' && !isRouterView.value;
     });
 
     // Computed properties
@@ -294,10 +343,12 @@ export default {
       currentSidebarTabId.value = tabId;
       currentSidebarView.value = 'rankings';
       isSidebarVisible.value = true;
+      console.log(`Right sidebar opened with tab: ${tabId}`);
     }
 
     function closeSidebar() {
       isSidebarVisible.value = false;
+      console.log('Right sidebar closed');
     }
 
     function switchSidebarTab(tabId) {
@@ -317,14 +368,70 @@ export default {
       }
       
       isLeftSidebarVisible.value = !isLeftSidebarVisible.value;
+      console.log(`Left sidebar ${isLeftSidebarVisible.value ? 'opened' : 'closed'}`);
     }
 
     function closeLeftSidebar() {
       isLeftSidebarVisible.value = false;
+      console.log('Left sidebar closed');
+    }
+
+    // State-based navigation functions
+    function navigateToView(view, params = {}) {
+      console.log(`State navigation: ${view}`, params);
+      
+      // Special handling for home navigation
+      if (view === 'home') {
+        // Clear state view to show dashboard
+        appViews.current = '';
+        appViews.params = {};
+        
+        // Close sidebars
+        isLeftSidebarVisible.value = false;
+        isSidebarVisible.value = false;
+        
+        console.log('Navigated to home dashboard');
+        return;
+      }
+      
+      // Save current view to history if we're already in a view
+      if (appViews.current !== '') {
+        appViews.history.push({
+          view: appViews.current,
+          params: {...appViews.params}
+        });
+      }
+      
+      // Update to new view
+      appViews.current = view;
+      appViews.params = params;
+      
+      // Close sidebars
+      isLeftSidebarVisible.value = false;
+      isSidebarVisible.value = false;
+      
+      console.log(`Navigated to view: ${view}`, params);
+    }
+    
+    function goBackView() {
+      if (appViews.history.length > 0) {
+        const previous = appViews.history.pop();
+        appViews.current = previous.view;
+        appViews.params = previous.params;
+        
+        console.log(`Navigated back to: ${previous.view}`, previous.params);
+        return true;
+      } else {
+        // If no history, go to dashboard
+        appViews.current = '';
+        appViews.params = {};
+        return false;
+      }
     }
 
     // Initialize
     onMounted(() => {
+      // Load saved rankings
       loadRankings();
     });
 
@@ -339,7 +446,9 @@ export default {
       currentSidebarView,
       dashboardItems,
       isRouterView,
+      isStateView,
       isLeftSidebarVisible,
+      appViews,
       showScreen,
       showSaveConfirmModal,
       hideSaveConfirmModal,
@@ -350,7 +459,9 @@ export default {
       switchSidebarTab,
       saveReview,
       toggleLeftSidebar,
-      closeLeftSidebar
+      closeLeftSidebar,
+      navigateToView,
+      goBackView
     };
   }
 };
