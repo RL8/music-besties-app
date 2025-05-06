@@ -20,10 +20,17 @@ nav:
   - 2. Application Overview: application_overview/overview.md
   - 3. Core Screens: screens/screens.md
   - 4. Component Details: components/components.md
-  - 5. User Interactions: interactions/interactions.md
-  - 6. Technical Implementation: technical_implementation/technical.md
-  - 7. User Experience: user_experience/user_experience.md
-  - 8. Developer Implementation Guide: developer_guide/guide.md
+  - 5. Design System:
+      - Overview: design_system/index.md
+      - Foundations: design_system/foundations.md
+      - Components: design_system/components.md
+      - Patterns: design_system/patterns.md
+      - Accessibility: design_system/accessibility.md
+      - Responsive Design: design_system/responsive.md
+  - 6. User Interactions: interactions/interactions.md
+  - 7. Technical Implementation: technical_implementation/technical.md
+  - 8. User Experience: user_experience/user_experience.md
+  - 9. Developer Implementation Guide: developer_guide/guide.md
 
 markdown_extensions:
   - pymdownx.highlight

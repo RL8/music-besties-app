@@ -55,6 +55,18 @@ body {
         @apply border-blue-300 bg-blue-50 text-blue-900 font-medium;
     }
     
+    /* Enhanced Floating Panel Styles */
+    .floating-panel-enter-active,
+    .floating-panel-leave-active {
+        transition: all 0.3s ease;
+    }
+    
+    .floating-panel-enter-from,
+    .floating-panel-leave-to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    
     /* Review Section Styles */
     .review-display-area .stars { 
         @apply text-lg text-amber-400 tracking-wider mb-1;

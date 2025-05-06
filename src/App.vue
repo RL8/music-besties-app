@@ -1,9 +1,39 @@
 <template>
   <div class="max-w-xl mx-auto bg-white min-h-screen shadow-lg relative overflow-hidden">
+    <!-- Router View for new pages -->
+    <router-view v-if="isRouterView">
+      <!-- Header for router views -->
+      <template #default>
+        <div class="sticky top-0 z-10 bg-white border-b border-gray-200">
+          <div class="flex items-center p-4">
+            <button 
+              @click="toggleLeftSidebar" 
+              class="mr-3 text-gray-700 p-1 rounded-md active:bg-gray-100 transition-colors no-hover-highlight"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 class="text-xl font-semibold text-gray-800">Music Besties</h1>
+          </div>
+        </div>
+      </template>
+    </router-view>
+
     <!-- Dashboard View -->
-    <div v-show="currentScreen === 'dashboard'" class="p-4 sm:p-6">
+    <div v-show="currentScreen === 'dashboard' && !isRouterView" class="p-4 sm:p-6">
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">My Rankings</h1>
+        <div class="flex items-center">
+          <button 
+            @click="toggleLeftSidebar" 
+            class="mr-3 text-gray-700 p-1 rounded-md active:bg-gray-100 transition-colors no-hover-highlight"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <h1 class="text-2xl font-bold text-gray-800">My Rankings</h1>
+        </div>
         <button @click="showScreen('edit')" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg shadow active:bg-blue-700 transition-colors text-sm no-hover-highlight">
           Edit
         </button>
@@ -28,7 +58,7 @@
     </div>
 
     <!-- Edit Rankings View -->
-    <div v-show="currentScreen === 'edit'" class="flex flex-col min-h-screen">
+    <div v-show="currentScreen === 'edit' && !isRouterView" class="flex flex-col min-h-screen">
       <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
         <button @click="showScreen('dashboard')" class="text-red-600 font-medium px-3 py-1 rounded active:bg-red-100 transition-colors no-hover-highlight">Cancel</button>
         <h2 class="text-lg font-semibold text-gray-700">Edit Rankings</h2>
@@ -61,15 +91,23 @@
       @switch-tab="switchSidebarTab"
       @save-review="saveReview"
     />
+
+    <!-- Left Sidebar Navigation -->
+    <left-sidebar
+      :visible="isLeftSidebarVisible"
+      @close="closeLeftSidebar"
+    />
   </div>
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import DashboardCard from './components/DashboardCard.vue';
 import EditRankingsTabs from './components/EditRankingsTabs.vue';
 import ModalDialog from './components/ModalDialog.vue';
 import SidebarPanel from './components/SidebarPanel.vue';
+import LeftSidebar from './components/LeftSidebar.vue';
 import { MAX_SELECTION, LOCAL_STORAGE_KEY, erasWithSongs, eraNamesInOrder, originalSongLists, eraEmojis } from './data';
 
 export default {
@@ -78,9 +116,13 @@ export default {
     DashboardCard,
     EditRankingsTabs,
     ModalDialog,
-    SidebarPanel
+    SidebarPanel,
+    LeftSidebar
   },
   setup() {
+    // Router
+    const route = useRoute();
+    
     // State
     const savedData = reactive({});
     const currentSelectionOrders = reactive({});
@@ -90,6 +132,12 @@ export default {
     const isSidebarVisible = ref(false);
     const currentSidebarTabId = ref(null);
     const currentSidebarView = ref('rankings');
+    const isLeftSidebarVisible = ref(false);
+
+    // Determine if we should show router view or app screens
+    const isRouterView = computed(() => {
+      return route.path !== '/';
+    });
 
     // Computed properties
     const dashboardItems = computed(() => {
@@ -199,32 +247,24 @@ export default {
         console.log(`Review saved for ${tabId}:`, { rating, comment });
         return true;
       } catch (e) {
-        console.error(`Failed to save review for ${tabId}:`, e);
+        console.error("Failed to save review:", e);
         alert("Error saving review!");
         return false;
       }
     }
 
-    function showScreen(screenId) {
-      closeSidebar();
-      currentScreen.value = screenId;
+    function showScreen(screen) {
+      currentScreen.value = screen;
       
-      if (screenId === 'edit') {
-        // Initialize edit screen
-        Object.keys(currentSelectionOrders).forEach(key => {
-          delete currentSelectionOrders[key];
-        });
+      if (screen === 'edit') {
+        // Initialize selection orders for editing
+        currentSelectionOrders['eras'] = deepCopy(savedData['eras'] || []);
         
-        Object.keys(savedData).forEach(key => {
-          if (Array.isArray(savedData[key])) {
-            currentSelectionOrders[key] = deepCopy(savedData[key]);
-          } else if (typeof savedData[key] === 'object' && savedData[key]?.selection) {
-            currentSelectionOrders[key] = deepCopy(savedData[key].selection);
+        erasWithSongs.forEach(era => {
+          if (savedData[era.id]) {
+            currentSelectionOrders[era.id] = deepCopy(savedData[era.id].selection || []);
           }
         });
-        
-        // Default to eras tab
-        activeTabId.value = 'eras';
       }
     }
 
@@ -243,32 +283,52 @@ export default {
       }
     }
 
-    function openSidebar(tabId, rank = '') {
-      currentSidebarTabId.value = tabId;
-      isSidebarVisible.value = true;
-      currentSidebarView.value = 'rankings';
-    }
-
-    function closeSidebar() {
-      isSidebarVisible.value = false;
-      currentSidebarTabId.value = null;
-    }
-
-    function switchSidebarTab(tabId) {
-      currentSidebarView.value = tabId.replace('sidebar-panel-', '');
-    }
-
     function switchTab(tabId) {
       activeTabId.value = tabId;
     }
 
-    // Lifecycle hooks
+    function openSidebar(tabId) {
+      // Close left sidebar if open
+      isLeftSidebarVisible.value = false;
+      
+      currentSidebarTabId.value = tabId;
+      currentSidebarView.value = 'rankings';
+      isSidebarVisible.value = true;
+    }
+
+    function closeSidebar() {
+      isSidebarVisible.value = false;
+    }
+
+    function switchSidebarTab(tabId) {
+      // Extract the view from the tab ID (e.g., 'sidebar-panel-rankings' -> 'rankings')
+      if (tabId.startsWith('sidebar-panel-')) {
+        currentSidebarView.value = tabId.replace('sidebar-panel-', '');
+        console.log('Switching sidebar tab to:', currentSidebarView.value);
+      } else {
+        console.warn('Invalid tab ID format:', tabId);
+      }
+    }
+
+    function toggleLeftSidebar() {
+      // Close right sidebar if open
+      if (isSidebarVisible.value) {
+        isSidebarVisible.value = false;
+      }
+      
+      isLeftSidebarVisible.value = !isLeftSidebarVisible.value;
+    }
+
+    function closeLeftSidebar() {
+      isLeftSidebarVisible.value = false;
+    }
+
+    // Initialize
     onMounted(() => {
       loadRankings();
     });
 
     return {
-      // State
       savedData,
       currentSelectionOrders,
       activeTabId,
@@ -277,20 +337,20 @@ export default {
       isSidebarVisible,
       currentSidebarTabId,
       currentSidebarView,
-      
-      // Computed
       dashboardItems,
-      
-      // Methods
+      isRouterView,
+      isLeftSidebarVisible,
       showScreen,
       showSaveConfirmModal,
       hideSaveConfirmModal,
       saveAndExit,
+      switchTab,
       openSidebar,
       closeSidebar,
       switchSidebarTab,
-      switchTab,
-      saveReview
+      saveReview,
+      toggleLeftSidebar,
+      closeLeftSidebar
     };
   }
 };
