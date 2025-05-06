@@ -13,7 +13,8 @@ export const eraNamesInOrder = [
   'Lover',
   'Folklore',
   'Evermore',
-  'Midnights'
+  'Midnights',
+  'The Tortured Poets Department'
 ];
 
 // Era Emojis
@@ -28,7 +29,8 @@ export const eraEmojis = {
   'lover': '💖',
   'folklore': '🌲',
   'evermore': '🍂',
-  'midnights': '✨'
+  'midnights': '✨',
+  'ttpd': '🤍'
 };
 
 // Song Emojis - We're not adding emojis for each individual song to keep it simple
@@ -308,6 +310,44 @@ export const erasWithSongs = [
       'Hits Different',
       'You\'re Losing Me'
     ]
+  },
+  {
+    id: 'ttpd',
+    name: 'The Tortured Poets Department',
+    emoji: '🤍',
+    songs: [
+      'Fortnight',
+      'The Tortured Poets Department',
+      'My Boy Only Breaks His Favorite Toys',
+      'Down Bad',
+      'So Long, London',
+      'But Daddy I Love Him',
+      'Fresh Out The Slammer',
+      'Florida!!!',
+      'Guilty as Sin?',
+      'Who\'s Afraid of Little Old Me?',
+      'I Can Fix Him (No Really I Can)',
+      'loml',
+      'I Can Do It With a Broken Heart',
+      'The Smallest Man Who Ever Lived',
+      'The Alchemy',
+      'Clara Bow',
+      'The Black Dog',
+      'imgonnagetyouback',
+      'The Albatross',
+      'Chloe or Sam or Sophia or Marcus',
+      'How Did It End?',
+      'So High School',
+      'I Hate It Here',
+      'thanK you aIMee',
+      'I Look in People\'s Windows',
+      'The Prophecy',
+      'Cassandra',
+      'Peter',
+      'The Bolter',
+      'Robin',
+      'The Manuscript'
+    ]
   }
 ];
 
@@ -322,5 +362,6 @@ export const originalSongLists = {
   'lover': erasWithSongs.find(era => era.id === 'lover').songs,
   'folklore': erasWithSongs.find(era => era.id === 'folklore').songs,
   'evermore': erasWithSongs.find(era => era.id === 'evermore').songs,
-  'midnights': erasWithSongs.find(era => era.id === 'midnights').songs
+  'midnights': erasWithSongs.find(era => era.id === 'midnights').songs,
+  'ttpd': erasWithSongs.find(era => era.id === 'ttpd').songs
 };

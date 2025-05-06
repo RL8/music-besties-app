@@ -1,0 +1,38 @@
+site_name: Music Besties Documentation
+site_description: Comprehensive documentation for the Music Besties application
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: pink
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - navigation.top
+    - navigation.tracking
+    - navigation.tabs.sticky
+
+nav:
+  - 1. Introduction & Version Information: index.md
+  - 2. Application Overview: application_overview/overview.md
+  - 3. Core Screens: screens/screens.md
+  - 4. Component Details: components/components.md
+  - 5. User Interactions: interactions/interactions.md
+  - 6. Technical Implementation: technical_implementation/technical.md
+  - 7. User Experience: user_experience/user_experience.md
+  - 8. Developer Implementation Guide: developer_guide/guide.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.emoji
+  - admonition
+  - toc:
+      permalink: true
+
+plugins:
+  - search
