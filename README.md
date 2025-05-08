@@ -7,6 +7,15 @@ A web application for ranking and reviewing music eras and songs. This app allow
 - Add star ratings and personal reviews
 - Save preferences to local storage
 
+## Documentation
+
+The complete documentation for this application is available in a separate repository:
+[Music Besties Documentation](https://github.com/your-username/music-besties-docs)
+
+To view the documentation locally:
+1. Clone the documentation repository
+2. Follow the setup instructions in the documentation README.md
+
 ## Features
 
 - Interactive dashboard with grid layout
