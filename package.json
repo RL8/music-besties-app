@@ -2,9 +2,12 @@
   "name": "music-besties-skeleton",
   "version": "1.0.0",
   "description": "A web application for ranking and reviewing music eras and songs. This app allows users to:",
+  "homepage": "https://rl8.github.io/music-besties-app",
   "scripts": {
     "dev": "parcel src/index.html",
-    "build": "parcel build src/index.html",
+    "build": "parcel build index.html --public-url ./",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:sidebar": "node tests/sidebar_tests.js"
   },
@@ -21,6 +24,7 @@
     "autoprefixer": "^10.4.21",
     "buffer": "^6.0.3",
     "chromedriver": "^136.0.0",
+    "gh-pages": "^6.3.0",
     "parcel": "^2.14.4",
     "postcss": "^8.5.3",
     "selenium-webdriver": "^4.32.0",
