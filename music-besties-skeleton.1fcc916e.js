@@ -160,11 +160,11 @@
       });
     }
   }
-})({"3iVaL":[function(require,module,exports,__globalThis) {
+})({"iUuJv":[function(require,module,exports,__globalThis) {
 var global = arguments[3];
 var HMR_HOST = null;
 var HMR_PORT = null;
-var HMR_SERVER_PORT = 54961;
+var HMR_SERVER_PORT = 1234;
 var HMR_SECURE = false;
 var HMR_ENV_HASH = "439701173a9199ea";
 var HMR_USE_SSE = false;
@@ -10499,9 +10499,13 @@ exports.default = {
         }
     },
     emits: [
-        'switch-tab'
+        'switch-tab',
+        'update:activeTabId'
     ],
-    setup (props) {
+    setup (props, { emit }) {
+        // DOM references
+        const tabButtonsContainer = (0, _vue.ref)(null);
+        const tabPanelsContainer = (0, _vue.ref)(null);
         const tabs = (0, _vue.computed)(()=>{
             const result = [
                 {
@@ -10541,16 +10545,28 @@ exports.default = {
             return [];
         });
         const sortedItems = (0, _vue.computed)(()=>{
-            // Get all items for the current tab
-            const items = [
-                ...allItems.value
+            return getSortedItemsForTab(props.activeTabId);
+        });
+        function getSortedItemsForTab(tabId) {
+            // Get all items for the specified tab
+            let items = [];
+            if (tabId === 'eras') items = [
+                ...(0, _data.eraNamesInOrder)
             ];
+            else {
+                const era = (0, _data.erasWithSongs).find((e)=>e.id === tabId);
+                if (era) items = [
+                    ...era.songs
+                ];
+            }
+            // Get current selections for this tab
+            const currentSelections = props.currentSelectionOrders[tabId] || [];
             // Sort items so that ranked items come first, in order of rank
             items.sort((a, b)=>{
-                const aRanked = currentItems.value.includes(a);
-                const bRanked = currentItems.value.includes(b);
+                const aRanked = currentSelections.includes(a);
+                const bRanked = currentSelections.includes(b);
                 if (aRanked && bRanked) // Both items are ranked, sort by rank number
-                return currentItems.value.indexOf(a) - currentItems.value.indexOf(b);
+                return currentSelections.indexOf(a) - currentSelections.indexOf(b);
                 else if (aRanked) // Only a is ranked, it should come first
                 return -1;
                 else if (bRanked) // Only b is ranked, it should come first
@@ -10559,34 +10575,73 @@ exports.default = {
                 return 0;
             });
             return items;
-        });
+        }
         function isItemRanked(item) {
-            return currentItems.value.includes(item);
+            const currentSelections = props.currentSelectionOrders[props.activeTabId] || [];
+            return currentSelections.includes(item);
         }
         function getRankNumber(item) {
-            return currentItems.value.indexOf(item) + 1;
+            const currentSelections = props.currentSelectionOrders[props.activeTabId] || [];
+            return currentSelections.indexOf(item) + 1;
         }
         function getItemClass(item) {
             if (isItemRanked(item)) return 'bg-blue-100 text-blue-800 border border-blue-200';
             else return 'bg-white border border-gray-200 text-gray-700';
         }
         function toggleItemRank(item) {
-            const index = currentItems.value.indexOf(item);
+            if (!props.currentSelectionOrders[props.activeTabId]) props.currentSelectionOrders[props.activeTabId] = [];
+            const currentSelections = props.currentSelectionOrders[props.activeTabId];
+            const index = currentSelections.indexOf(item);
             if (index !== -1) // Item is already ranked, remove it
-            currentItems.value.splice(index, 1);
-            else if (currentItems.value.length < (0, _data.MAX_SELECTION)) // Item is not ranked and we haven't reached the max selection
-            currentItems.value.push(item);
+            currentSelections.splice(index, 1);
+            else if (currentSelections.length < (0, _data.MAX_SELECTION)) // Item is not ranked and we haven't reached the max selection
+            currentSelections.push(item);
+            // Update tab button count
+            updateTabButtonCount(props.activeTabId);
         }
+        function getTabButtonClass(tabId) {
+            return tabId === props.activeTabId ? 'active border-blue-500 bg-blue-50 text-blue-600 font-semibold' : 'border-transparent text-gray-500';
+        }
+        function getTabItemCount(tabId) {
+            if (tabId === 'eras') return (0, _data.eraNamesInOrder).length;
+            else {
+                const era = (0, _data.erasWithSongs).find((e)=>e.id === tabId);
+                return era ? era.songs.length : 0;
+            }
+        }
+        function switchTab(tabId) {
+            if (props.activeTabId === tabId) return;
+            emit('switch-tab', tabId);
+            emit('update:activeTabId', tabId);
+        }
+        function updateTabButtonCount(tabId) {
+        // This is now handled reactively by the template
+        }
+        function handleChipKeyDown(event, item) {
+            if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                toggleItemRank(item);
+            }
+        }
+        // Watch for activeTabId changes to ensure proper UI updates
+        (0, _vue.watch)(()=>props.activeTabId, (newTabId)=>{
+        // This would be where we'd do any additional processing when tabs change
+        });
         return {
+            tabButtonsContainer,
+            tabPanelsContainer,
             tabs,
-            currentItems,
-            allItems,
             sortedItems,
             maxSelection: (0, _data.MAX_SELECTION),
             isItemRanked,
             getRankNumber,
             getItemClass,
-            toggleItemRank
+            toggleItemRank,
+            getTabButtonClass,
+            getTabItemCount,
+            switchTab,
+            getSortedItemsForTab,
+            handleChipKeyDown
         };
     }
 };
@@ -10967,49 +11022,42 @@ const _hoisted_1 = {
     class: "flex flex-col flex-grow"
 };
 const _hoisted_2 = {
-    class: "flex overflow-x-auto py-2 px-4 border-b border-gray-200 bg-white sticky top-14 z-10"
+    class: "flex overflow-x-auto py-2 px-4 border-b border-gray-200 bg-white sticky top-14 z-10",
+    ref: "tabButtonsContainer"
 };
 const _hoisted_3 = [
-    "onClick"
+    "onClick",
+    "id",
+    "aria-controls",
+    "aria-selected"
 ];
 const _hoisted_4 = {
     key: 0,
     class: "ml-1"
 };
 const _hoisted_5 = {
-    class: "flex-grow overflow-y-auto p-4 bg-gray-50"
+    class: "tab-count text-xs text-gray-400 mt-1"
 };
 const _hoisted_6 = {
-    key: 0,
-    class: "mb-4"
+    class: "flex-grow overflow-y-auto p-4 bg-gray-50",
+    ref: "tabPanelsContainer"
 };
-const _hoisted_7 = {
-    class: "mb-4"
-};
+const _hoisted_7 = [
+    "id",
+    "aria-labelledby"
+];
 const _hoisted_8 = {
-    class: "flex flex-wrap gap-2"
+    class: "text-lg font-semibold text-gray-700 mb-4"
 };
 const _hoisted_9 = [
-    "onClick"
+    "data-tab-id"
 ];
-const _hoisted_10 = {
-    key: 0,
-    class: "chip-rank-indicator mr-1"
-};
+const _hoisted_10 = [
+    "onClick",
+    "aria-checked",
+    "onKeydown"
+];
 const _hoisted_11 = {
-    key: 1,
-    class: "mb-4"
-};
-const _hoisted_12 = {
-    class: "mb-4"
-};
-const _hoisted_13 = {
-    class: "flex flex-wrap gap-2"
-};
-const _hoisted_14 = [
-    "onClick"
-];
-const _hoisted_15 = {
     key: 0,
     class: "chip-rank-indicator mr-1"
 };
@@ -11020,63 +11068,63 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
             ((0, _vue.openBlock)(true), (0, _vue.createElementBlock)((0, _vue.Fragment), null, (0, _vue.renderList)($setup.tabs, (tab)=>{
                 return (0, _vue.openBlock)(), (0, _vue.createElementBlock)("button", {
                     key: tab.id,
-                    onClick: ($event)=>_ctx.$emit('switch-tab', tab.id),
+                    onClick: ($event)=>$setup.switchTab(tab.id),
                     class: (0, _vue.normalizeClass)([
-                        "px-3 py-1 mr-2 rounded-full text-sm font-medium whitespace-nowrap",
-                        tab.id === $props.activeTabId ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
-                    ])
+                        "tab-button flex flex-col items-center whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm",
+                        $setup.getTabButtonClass(tab.id)
+                    ]),
+                    id: `tab-button-${tab.id}`,
+                    role: "tab",
+                    "aria-controls": `panel-${tab.id}`,
+                    "aria-selected": tab.id === $props.activeTabId ? 'true' : 'false'
                 }, [
-                    (0, _vue.createTextVNode)((0, _vue.toDisplayString)(tab.name) + " ", 1 /* TEXT */ ),
-                    tab.emoji ? ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("span", _hoisted_4, (0, _vue.toDisplayString)(tab.emoji), 1 /* TEXT */ )) : (0, _vue.createCommentVNode)("v-if", true)
+                    (0, _vue.createElementVNode)("span", null, (0, _vue.toDisplayString)(tab.name), 1 /* TEXT */ ),
+                    tab.emoji ? ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("span", _hoisted_4, (0, _vue.toDisplayString)(tab.emoji), 1 /* TEXT */ )) : (0, _vue.createCommentVNode)("v-if", true),
+                    (0, _vue.createElementVNode)("span", _hoisted_5, (0, _vue.toDisplayString)(($props.currentSelectionOrders[tab.id] || []).length) + " of " + (0, _vue.toDisplayString)($setup.getTabItemCount(tab.id)), 1 /* TEXT */ )
                 ], 10 /* CLASS, PROPS */ , _hoisted_3);
             }), 128 /* KEYED_FRAGMENT */ ))
-        ]),
+        ], 512 /* NEED_PATCH */ ),
         (0, _vue.createCommentVNode)(" Tab Content "),
-        (0, _vue.createElementVNode)("div", _hoisted_5, [
-            $props.activeTabId === 'eras' ? ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("div", _hoisted_6, [
-                _cache[0] || (_cache[0] = (0, _vue.createElementVNode)("p", {
-                    class: "text-sm text-gray-500 mb-2"
-                }, " Tap to rank. Top items are your favorites. ", -1 /* HOISTED */ )),
-                (0, _vue.createElementVNode)("div", _hoisted_7, [
-                    (0, _vue.createElementVNode)("div", _hoisted_8, [
-                        ((0, _vue.openBlock)(true), (0, _vue.createElementBlock)((0, _vue.Fragment), null, (0, _vue.renderList)($setup.sortedItems, (item)=>{
+        (0, _vue.createElementVNode)("div", _hoisted_6, [
+            ((0, _vue.openBlock)(true), (0, _vue.createElementBlock)((0, _vue.Fragment), null, (0, _vue.renderList)($setup.tabs, (tab)=>{
+                return (0, _vue.openBlock)(), (0, _vue.createElementBlock)("div", {
+                    key: `panel-${tab.id}`,
+                    id: `panel-${tab.id}`,
+                    class: (0, _vue.normalizeClass)([
+                        "tab-panel",
+                        {
+                            'hidden': tab.id !== $props.activeTabId
+                        }
+                    ]),
+                    role: "tabpanel",
+                    "aria-labelledby": `tab-button-${tab.id}`
+                }, [
+                    (0, _vue.createElementVNode)("h2", _hoisted_8, (0, _vue.toDisplayString)(tab.id === 'eras' ? 'Select up to 3 Eras:' : `Select up to 3 Songs from ${tab.name}:`), 1 /* TEXT */ ),
+                    (0, _vue.createElementVNode)("div", {
+                        class: "chip-container flex flex-wrap gap-3 mb-6",
+                        "data-tab-id": tab.id
+                    }, [
+                        ((0, _vue.openBlock)(true), (0, _vue.createElementBlock)((0, _vue.Fragment), null, (0, _vue.renderList)($setup.getSortedItemsForTab(tab.id), (item)=>{
                             return (0, _vue.openBlock)(), (0, _vue.createElementBlock)("button", {
-                                key: item,
+                                key: `${tab.id}-${item}`,
                                 onClick: ($event)=>$setup.toggleItemRank(item),
                                 class: (0, _vue.normalizeClass)([
                                     "chip py-1 px-3 rounded-full text-sm",
                                     $setup.getItemClass(item)
-                                ])
+                                ]),
+                                role: "checkbox",
+                                "aria-checked": $setup.isItemRanked(item) ? 'true' : 'false',
+                                tabindex: "0",
+                                onKeydown: ($event)=>$setup.handleChipKeyDown($event, item)
                             }, [
-                                $setup.isItemRanked(item) ? ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("span", _hoisted_10, (0, _vue.toDisplayString)($setup.getRankNumber(item)), 1 /* TEXT */ )) : (0, _vue.createCommentVNode)("v-if", true),
+                                $setup.isItemRanked(item) ? ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("span", _hoisted_11, (0, _vue.toDisplayString)($setup.getRankNumber(item)), 1 /* TEXT */ )) : (0, _vue.createCommentVNode)("v-if", true),
                                 (0, _vue.createTextVNode)(" " + (0, _vue.toDisplayString)(item), 1 /* TEXT */ )
-                            ], 10 /* CLASS, PROPS */ , _hoisted_9);
+                            ], 42 /* CLASS, PROPS, NEED_HYDRATION */ , _hoisted_10);
                         }), 128 /* KEYED_FRAGMENT */ ))
-                    ])
-                ])
-            ])) : ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("div", _hoisted_11, [
-                _cache[1] || (_cache[1] = (0, _vue.createElementVNode)("p", {
-                    class: "text-sm text-gray-500 mb-2"
-                }, " Tap to rank. Top items are your favorites. ", -1 /* HOISTED */ )),
-                (0, _vue.createElementVNode)("div", _hoisted_12, [
-                    (0, _vue.createElementVNode)("div", _hoisted_13, [
-                        ((0, _vue.openBlock)(true), (0, _vue.createElementBlock)((0, _vue.Fragment), null, (0, _vue.renderList)($setup.sortedItems, (item)=>{
-                            return (0, _vue.openBlock)(), (0, _vue.createElementBlock)("button", {
-                                key: item,
-                                onClick: ($event)=>$setup.toggleItemRank(item),
-                                class: (0, _vue.normalizeClass)([
-                                    "chip py-1 px-3 rounded-full text-sm",
-                                    $setup.getItemClass(item)
-                                ])
-                            }, [
-                                $setup.isItemRanked(item) ? ((0, _vue.openBlock)(), (0, _vue.createElementBlock)("span", _hoisted_15, (0, _vue.toDisplayString)($setup.getRankNumber(item)), 1 /* TEXT */ )) : (0, _vue.createCommentVNode)("v-if", true),
-                                (0, _vue.createTextVNode)(" " + (0, _vue.toDisplayString)(item), 1 /* TEXT */ )
-                            ], 10 /* CLASS, PROPS */ , _hoisted_14);
-                        }), 128 /* KEYED_FRAGMENT */ ))
-                    ])
-                ])
-            ]))
-        ])
+                    ], 8 /* PROPS */ , _hoisted_9)
+                ], 10 /* CLASS, PROPS */ , _hoisted_7);
+            }), 128 /* KEYED_FRAGMENT */ ))
+        ], 512 /* NEED_PATCH */ )
     ]);
 }
 if (module.hot) module.hot.accept(()=>{
@@ -15579,7 +15627,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                             (0, _vue.createElementVNode)("button", {
                                 onClick: _cache[0] || (_cache[0] = (...args)=>$setup.toggleLeftSidebar && $setup.toggleLeftSidebar(...args)),
                                 class: "mr-3 text-gray-700 p-1 rounded-md active:bg-gray-100 transition-colors no-hover-highlight"
-                            }, _cache[5] || (_cache[5] = [
+                            }, _cache[6] || (_cache[6] = [
                                 (0, _vue.createElementVNode)("svg", {
                                     xmlns: "http://www.w3.org/2000/svg",
                                     class: "h-6 w-6",
@@ -15595,7 +15643,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                                     })
                                 ], -1 /* HOISTED */ )
                             ])),
-                            _cache[6] || (_cache[6] = (0, _vue.createElementVNode)("h1", {
+                            _cache[7] || (_cache[7] = (0, _vue.createElementVNode)("h1", {
                                 class: "text-xl font-semibold text-gray-800"
                             }, "Music Besties", -1 /* HOISTED */ ))
                         ])
@@ -15610,7 +15658,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                     (0, _vue.createElementVNode)("button", {
                         onClick: _cache[1] || (_cache[1] = (...args)=>$setup.toggleLeftSidebar && $setup.toggleLeftSidebar(...args)),
                         class: "mr-3 text-gray-700 p-1 rounded-md active:bg-gray-100 transition-colors no-hover-highlight"
-                    }, _cache[7] || (_cache[7] = [
+                    }, _cache[8] || (_cache[8] = [
                         (0, _vue.createElementVNode)("svg", {
                             xmlns: "http://www.w3.org/2000/svg",
                             class: "h-6 w-6",
@@ -15626,7 +15674,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                             })
                         ], -1 /* HOISTED */ )
                     ])),
-                    _cache[8] || (_cache[8] = (0, _vue.createElementVNode)("h1", {
+                    _cache[9] || (_cache[9] = (0, _vue.createElementVNode)("h1", {
                         class: "text-2xl font-bold text-gray-800"
                     }, "My Rankings", -1 /* HOISTED */ ))
                 ]),
@@ -15659,7 +15707,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                     ]);
                 }), 128 /* KEYED_FRAGMENT */ ))
             ]),
-            _cache[9] || (_cache[9] = (0, _vue.createElementVNode)("p", {
+            _cache[10] || (_cache[10] = (0, _vue.createElementVNode)("p", {
                 class: "text-xs text-gray-400 mt-8 text-center px-4 pb-4"
             }, " This app is unofficial and not affiliated with Taylor Swift or TAS Rights Management, LLC. ", -1 /* HOISTED */ ))
         ], 512 /* NEED_PATCH */ ), [
@@ -15675,7 +15723,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                     onClick: _cache[3] || (_cache[3] = ($event)=>$setup.showScreen('dashboard')),
                     class: "text-red-600 font-medium px-3 py-1 rounded active:bg-red-100 transition-colors no-hover-highlight"
                 }, "Cancel"),
-                _cache[10] || (_cache[10] = (0, _vue.createElementVNode)("h2", {
+                _cache[11] || (_cache[11] = (0, _vue.createElementVNode)("h2", {
                     class: "text-lg font-semibold text-gray-700"
                 }, "Edit Rankings", -1 /* HOISTED */ )),
                 (0, _vue.createElementVNode)("button", {
@@ -15687,7 +15735,8 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
                 "active-tab-id": $setup.activeTabId,
                 "current-selection-orders": $setup.currentSelectionOrders,
                 "saved-data": $setup.savedData,
-                onSwitchTab: $setup.switchTab
+                onSwitchTab: $setup.switchTab,
+                "onUpdate:activeTabId": _cache[5] || (_cache[5] = ($event)=>$setup.activeTabId = $event)
             }, null, 8 /* PROPS */ , [
                 "active-tab-id",
                 "current-selection-orders",
@@ -15863,6 +15912,6 @@ module.exports = import("./AboutView.84987c96.js").then(()=>module.bundle.root('
 },{"l8Hpn":"l8Hpn"}],"iEhQv":[function(require,module,exports,__globalThis) {
 module.exports = import("./TermsPrivacyView.50160c71.js").then(()=>module.bundle.root('5VQik'));
 
-},{"5VQik":"5VQik"}]},["3iVaL","fILKw"], "fILKw", "parcelRequireb26a", {})
+},{"5VQik":"5VQik"}]},["iUuJv","fILKw"], "fILKw", "parcelRequireb26a", {})
 
 //# sourceMappingURL=music-besties-skeleton.1fcc916e.js.map
